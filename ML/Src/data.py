@@ -41,7 +41,7 @@ def load_csv_df(
 
     df_size = (df_path.stat().st_size) / (1024 * 1024)
 
-    print(f"Dataframe have: {df.shape[0]} rows / {df.shape[1]} columns")
+    print(f"Dataframe has: {df.shape[0]} rows / {df.shape[1]} columns")
     print(f"Dataframe size: {df_size:.3f}MB")
 
     return df
