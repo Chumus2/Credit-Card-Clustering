@@ -52,3 +52,39 @@ def set_plotting_style() -> None:
     })
 
     sns.set_palette(ACCENT_PALETTE)
+
+
+def draw_model_clusters(
+    model,
+    x,
+    title: str,
+    **fit_params
+) -> None:
+    """"""
+
+    model.fit(x, **fit_params)
+
+    if hasattr(model, 'labels_'):
+        labels = model.labels_
+    else:
+        labels = model.predict(x)
+
+    x["cluster"] = labels
+
+    plt.figure(figsize=(10, 7))
+    sns.scatterplot(
+        data=x,
+        x="PCA1",
+        y="PCA2",
+        hue="cluster",
+        palette="tab10",
+        s=70,
+        alpha=0.8,
+    )
+
+    plt.title(title)
+    plt.xlabel("PC1")
+    plt.ylabel("PC2")
+    plt.legend(title="Cluster", bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+    plt.show()
