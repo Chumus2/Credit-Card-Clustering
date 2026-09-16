@@ -1,4 +1,8 @@
+import optuna
 import pandas as pd
+
+import hdbscan
+from sklearn.cluster import DBSCAN
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 
 
@@ -93,3 +97,93 @@ def print_model_result(
     print("=" * 65)
     print(result_df.to_string(index=False))
     print("\n"+ "=" * 65)
+
+
+def create_cluster_objective(
+    x: pd.DataFrame,
+    algorithm: str = "dbscan",
+
+    # Parameters for dbscan
+    eps_min: float = 0.1,
+    eps_max: float = 2.0,
+    min_samples_min: int = 3,
+    min_samples_max: int = 20,
+    max_noise_ratio: float = 0.4,
+
+    # Parameters for hdbscan
+    min_cluster_size_min: int = 5,
+    min_cluster_size_max: int = 50,
+):
+    """Function for creating objective-function for optuna with df x argument.
+
+    Function checking algorithm argument:
+    1. if algorithm is dbscan:
+        - suggesting eps and min_samples
+        - creating DBSCAN model
+    2. if algorithm is hdbscan:
+        - suggesting min_cluster_size and min_samples
+        - creating HDBSCAN model
+    3. otherwise:
+        - raising ValueError for invalid algorithm
+
+    Predicting model labels for x.
+    Calculating n_clusters (excluding noise -1).
+    1. if n_clusters < 2:
+        - returning -1.0 penalty score
+
+    Calculating noise_ratio.
+    1. if noise_ratio > max_noise_ratio:
+        - returning -1.0 penalty score
+
+    Calculating silhouette score for non-noise samples (mask) and returning it.
+
+    function required arguments:
+    1. x (pd.DataFrame) feature that will be required for model prediction:
+    2. algorithm (str) model algorithm name ('dbscan' or 'hdbscan'):
+
+    function optional arguments:
+    1. eps_min (float) minimum eps value for dbscan:
+    2. eps_max (float) maximum eps value for dbscan:
+    3. min_samples_min (int) minimum min_samples value for models:
+    4. min_samples_max (int) maximum min_samples value for models:
+    5. max_noise_ratio (float) maximum noise ratio allowed:
+    6. min_cluster_size_min (int) minimum min_cluster_size value for hdbscan:
+    7. min_cluster_size_max (int) maximum min_cluster_size value for hdbscan:
+
+    function returns:
+    1. objective (function) function for optuna study:
+    """
+
+    def objective(trial: optuna.Trial) -> float:
+        algo = algorithm.lower()
+
+        if algo == "dbscan":
+            eps = trial.suggest_float("eps", eps_min, eps_max, step=0.05)
+            min_samples = trial.suggest_int("min_samples", min_samples_min, min_samples_max)
+            model = DBSCAN(eps=eps, min_samples=min_samples)
+
+        elif algo == "hdbscan":
+            min_cluster_size = trial.suggest_int("min_cluster_size", min_cluster_size_min, min_cluster_size_max)
+            min_samples = trial.suggest_int("min_samples", min_samples_min, min_samples_max)
+            model = hdbscan.HDBSCAN(
+                min_cluster_size=min_cluster_size,
+                min_samples=min_samples,
+                core_dist_n_jobs=-1
+            )
+        else:
+            raise ValueError("Invalid algorithm argument")
+
+        labels = model.fit_predict(x)
+
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        if n_clusters < 2:
+            return -1.0
+
+        noise_ratio = (labels == -1).sum() / len(labels)
+        if noise_ratio > max_noise_ratio:
+            return -1.0
+
+        mask = labels != -1
+        return silhouette_score(x[mask], labels[mask])
+
+    return objective
