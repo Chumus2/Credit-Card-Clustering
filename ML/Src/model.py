@@ -49,15 +49,16 @@ def save_model_result(
     else:
         labels = model.predict(x)
 
-    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+    mask = labels != -1
+    n_clusters = len(set(labels[mask]))
 
     if n_clusters < 2:
         print(f"Failed to save model results for {model_name} because there are only {n_clusters} clusters.")
         return results
 
-    model_silhouette = silhouette_score(x, labels)
-    model_davies = davies_bouldin_score(x, labels)
-    model_calinski = calinski_harabasz_score(x, labels)
+    model_silhouette = silhouette_score(x[mask], labels[mask])
+    model_davies = davies_bouldin_score(x[mask], labels[mask])
+    model_calinski = calinski_harabasz_score(x[mask], labels[mask])
 
     results.append({
         "model_name": model_name,
@@ -168,6 +169,7 @@ def create_cluster_objective(
             model = hdbscan.HDBSCAN(
                 min_cluster_size=min_cluster_size,
                 min_samples=min_samples,
+                cluster_selection_method='leaf',
                 core_dist_n_jobs=-1
             )
         else:
@@ -175,8 +177,8 @@ def create_cluster_objective(
 
         labels = model.fit_predict(x)
 
-        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-        if n_clusters < 2:
+        real_clusters = set(labels) - {-1}
+        if len(real_clusters) < 2:
             return -1.0
 
         noise_ratio = (labels == -1).sum() / len(labels)
