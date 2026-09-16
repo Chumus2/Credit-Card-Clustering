@@ -63,3 +63,33 @@ def save_model_result(
     })
 
     return results
+
+
+def print_model_result(
+    results: list
+) -> None:
+    """From results list argument printing results beautifully
+
+    Takes results list (argument) and checking
+    1. if results empty:
+        - printing that model results are empty
+        - returns
+    Make pd.DataFrame for results list. And printing results.
+
+    function required arguments:
+    1. results (list) list where is model results:
+
+    No return.
+    """
+
+    if not results:
+        print("Model results are empty")
+        return
+
+    result_df = pd.DataFrame(results)
+
+    print("\n" + "=" * 65)
+    print(" " * 20 + "Clustering Results")
+    print("=" * 65)
+    print(result_df.to_string(index=False))
+    print("\n"+ "=" * 65)
