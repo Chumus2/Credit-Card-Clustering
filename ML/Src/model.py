@@ -132,7 +132,7 @@ def create_cluster_objective(
 
     Predicting model labels for x.
     Calculating n_clusters (excluding noise -1).
-    1. if n_clusters < 2:
+    1. if n_clusters < 3:
         - returning -1.0 penalty score
 
     Calculating noise_ratio.
@@ -183,7 +183,7 @@ def create_cluster_objective(
         labels = model.fit_predict(x)
 
         real_clusters = set(labels) - {-1}
-        if len(real_clusters) < 2:
+        if len(real_clusters) < 3:
             return -1.0
 
         noise_ratio = (labels == -1).sum() / len(labels)
