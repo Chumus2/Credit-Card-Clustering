@@ -56,10 +56,10 @@ def save_csv_df(
     Firstly finding place to save dataframe by output_path argument (pathlib.Path).
     Then trying save dataframe to this path.
 
-    1. if path founded:
+    1. if path exists:
+        - saves dataframe to it
         - printing success message
         - printing dataframe stats (shape and memory usage)
-        - saves dataframe to it
     2. otherwise:
         - printing failure message
         - raises error
@@ -73,17 +73,19 @@ def save_csv_df(
 
     output_path = Path(output_path)
 
-    if not output_path.parent.exists():
-        raise FileNotFoundError(f"Failed to save file: {output_path}")
-
     try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if not output_path.parent.exists():
+            raise FileNotFoundError(f"Target directory does not exist: {output_path.parent}")
+
         df.to_csv(output_path, index=False)
         print(f"Successfully saved dataframe: {output_path}")
+
+        df_memory_usage = df.memory_usage(deep=True).sum() / (1024 ** 2)
+        print(f"Dataframe has: {df.shape[0]} rows / {df.shape[1]} columns")
+        print(f"Dataframe memory usage: {df_memory_usage:.3f}MB")
+
     except Exception as e:
         print(f"Failed to save dataframe: {output_path}")
         raise e
-
-    df_memory_usage = df.memory_usage(deep=True).sum() / 1024 ** 2
-
-    print(f"Dataframe has: {df.shape[0]} rows / {df.shape[1]} columns")
-    print(f"Dataframe memory usage: {df_memory_usage:.3f}MB")

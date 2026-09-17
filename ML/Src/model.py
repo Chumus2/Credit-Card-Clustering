@@ -1,5 +1,8 @@
+import os
 import optuna
+import joblib
 import pandas as pd
+from pathlib import Path
 
 import hdbscan
 from sklearn.cluster import DBSCAN
@@ -161,7 +164,10 @@ def create_cluster_objective(
         if algo == "dbscan":
             eps = trial.suggest_float("eps", eps_min, eps_max, step=0.05)
             min_samples = trial.suggest_int("min_samples", min_samples_min, min_samples_max)
-            model = DBSCAN(eps=eps, min_samples=min_samples)
+            model = DBSCAN(
+                eps=eps,
+                min_samples=min_samples
+            )
 
         elif algo == "hdbscan":
             min_cluster_size = trial.suggest_int("min_cluster_size", min_cluster_size_min, min_cluster_size_max)
@@ -169,7 +175,6 @@ def create_cluster_objective(
             model = hdbscan.HDBSCAN(
                 min_cluster_size=min_cluster_size,
                 min_samples=min_samples,
-                cluster_selection_method='leaf',
                 core_dist_n_jobs=-1
             )
         else:
@@ -189,3 +194,49 @@ def create_cluster_objective(
         return silhouette_score(x[mask], labels[mask])
 
     return objective
+
+
+def save_trained_model(
+    model,
+    output_path: str | Path
+) -> None:
+    """Save a trained model to path specified by output_path argument using joblib.
+
+    Firstly finding place to save model by output_path argument (pathlib.Path).
+    Then trying save model to this path.
+
+    1. if path exists:
+        - saves model to it
+        - printing success message
+        - printing model class info
+    2. otherwise:
+        - printing failure message
+        - raises error
+
+    function required arguments:
+    1. model (scikit-learn / hdbscan estimator) model object to save:
+    2. output_path (str / pathlib.Path) path to save model:
+
+    No return.
+    """
+
+    output_path = Path(output_path)
+
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if not output_path.parent.exists():
+            raise FileNotFoundError(f"Target directory does not exist: {output_path.parent}")
+
+        joblib.dump(model, output_path)
+        print(f"Successfully saved model: {output_path}")
+
+        model_name = model.__class__.__name__
+        print(f"Model algorithm: {model_name}")
+
+        model_size = os.path.getsize(output_path) / (1024 * 1024)
+        print(f"Model file size: {model_size:.3f}MB")
+
+    except Exception as e:
+        print(f"Failed to save model: {output_path}")
+        raise e
